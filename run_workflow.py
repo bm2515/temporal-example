@@ -3,25 +3,23 @@ import traceback
 
 from temporalio.client import Client, WorkflowFailureError
 
-from shared import REFUND_ORDER_TASK_QUEUE_NAME, OrderDetails
-from workflows import Refund
+from shared import WELCOME_CAKE_TASK_QUEUE_NAME, WelcomeDetails
+from workflows import Greeting
 
 async def main() -> None:
     # Create client connected to server at the given address
     client: Client = await Client.connect("localhost:7233")
 
-    data: OrderDetails = OrderDetails(
-        order_id='12345',
-        user_id=1,
-        amount=10
+    data: WelcomeDetails = WelcomeDetails(
+        cohort_name='Cake 2025'
     )
 
     try:
         result = await client.execute_workflow(
-            Refund.run,
+            Greeting.run,
             data,
-            id="issue-cake-refund-701",
-            task_queue=REFUND_ORDER_TASK_QUEUE_NAME,
+            id="greet-cake-2025",
+            task_queue=WELCOME_CAKE_TASK_QUEUE_NAME,
         )
 
         print(f"Result: {result}")

@@ -4,91 +4,32 @@ import asyncio
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 from temporalio.exceptions import ActivityError
-from activities import BankingActivities
-from service import WalletService
-
-from shared import RefundDetails, TransferDetails
 
 with workflow.unsafe.imports_passed_through():
-    from activities import WalletActivities
-    from shared import OrderDetails
-
+    from activities import GreetingActivities
+    from shared import WelcomeDetails
 
 
 @workflow.defn
-class Refund:
+class Greeting:
     @workflow.run
-    async def run(self, order_details: OrderDetails) -> str:
+    async def run(self, welcome_details: WelcomeDetails) -> str:
 
         retry_policy = RetryPolicy(
             maximum_attempts=3,
             maximum_interval=timedelta(seconds=2),
-            non_retryable_error_types=["InvalidWalletError", "InvalidAccountError"],
+            non_retryable_error_types=[],
         )
 
+        try:    
+            greeting_output = await workflow.execute_activity_method(
+                GreetingActivities.greetings,
+                WelcomeDetails(welcome_details.cohort_name),
+                start_to_close_timeout=timedelta(seconds=5),
+                retry_policy=retry_policy,
+            )
+            return greeting_output
 
-        # Deposit order value to user's wallet
-        deposit_output = await workflow.execute_activity_method(
-            WalletActivities.deposit,
-            TransferDetails(order_details.user_id, order_details.amount, 1),
-            start_to_close_timeout=timedelta(seconds=5),
-            retry_policy=retry_policy,
-        )
-
-        await asyncio.sleep(2)
-
-        user_wallet = WalletService('example@wallet.com').find_wallet(1)
-
-        workflow.logger.info(
-            f"The Wallet balance for wallet ID {user_wallet.wallet_id}: {user_wallet.balance}"
-        )
-
-        if user_wallet.balance > 0:
-
-            # Refund money to user's credit card
-            try:
-                withdraw_output = await workflow.execute_activity_method(
-                    WalletActivities.withdraw,
-                    TransferDetails(order_details.user_id, user_wallet.balance, 1),
-                    start_to_close_timeout=timedelta(seconds=5),
-                    retry_policy=retry_policy,
-                )
-
-                try:
-                
-                    refund_output = await workflow.execute_activity_method(
-                        BankingActivities.refund,
-                        RefundDetails("1234", user_wallet.balance, 1),
-                        start_to_close_timeout=timedelta(seconds=5),
-                        retry_policy=retry_policy,
-                    )
-
-                    return refund_output
-
-                except:
-
-                    try:
-
-                        # refund to credit card failed, so replenish funds back to wallet
-                        deposit_output = await workflow.execute_activity_method(
-                            WalletActivities.deposit,
-                            TransferDetails(order_details.user_id, user_wallet.balance, 1),
-                            start_to_close_timeout=timedelta(seconds=5),
-                            retry_policy=retry_policy,
-                        )
-
-                    except ActivityError as deposit_err:
-                        workflow.logger.error(f"The deposit to the wallet has failed: {deposit_err}")
-                        raise deposit_err
-
-            except:
-                workflow.logger.error(f"The refund of the order ID {order_details.order_id} has failed")
-                
-                
-
-
-
-
-
-
-
+        except ActivityError as greeting_err:
+            workflow.logger.error(f"The greetings workflow failed with exception: {greeting_err}")
+            raise greeting_err

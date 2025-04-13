@@ -2,7 +2,7 @@
 
 This is the code to support the tutorial at https://learn.temporal.io/getting_started/python/first_program_in_python/
 
-To use this code, make sure you have a [Temporal Cluster running](https://docs.temporal.io/docs/server/quick-install/) first.
+To use this code, make sure you have a [Temporal Cluster running](https://learn.temporal.io/getting_started/python/dev_environment/) first.
 
 
 Clone this repo and run this application.
